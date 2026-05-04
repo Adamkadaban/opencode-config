@@ -29,7 +29,8 @@
   },
   "skills": {
     "paths": [
-      "skills/_trailofbits/plugins"
+      "skills/_trailofbits/plugins",
+      "skills/_iothackbot/skills"
     ]
   },
   "lsp": false,

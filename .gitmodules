@@ -7,3 +7,6 @@
 [submodule "skills/_trailofbits"]
 	path = skills/_trailofbits
 	url = https://github.com/trailofbits/skills.git
+[submodule "skills/_iothackbot"]
+	path = skills/_iothackbot
+	url = https://github.com/BrownFineSecurity/iothackbot.git
