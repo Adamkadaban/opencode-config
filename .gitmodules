@@ -4,3 +4,6 @@
 [submodule "skills/research-fetch"]
 	path = skills/research-fetch
 	url = https://github.com/Adamkadaban/research-fetch-skill.git
+[submodule "skills/_trailofbits"]
+	path = skills/_trailofbits
+	url = https://github.com/trailofbits/skills.git

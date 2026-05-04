@@ -27,6 +27,11 @@
       ]
     }
   },
+  "skills": {
+    "paths": [
+      "skills/_trailofbits/plugins"
+    ]
+  },
   "lsp": false,
   "provider": {
     "github-copilot": {}
