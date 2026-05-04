@@ -1,0 +1,34 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "opencode-copilot-enhanced",
+    "opencode-content-filter@0.1.1"
+  ],
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "{file:~/.secrets/context7-key}"
+      }
+    },
+    "github": {
+      "type": "remote",
+      "url": "https://api.enterprise.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer {file:~/.secrets/github-copilot-token}"
+      }
+    },
+    "copilot-review": {
+      "type": "local",
+      "command": [
+        "node",
+        "/home/adam/Desktop/copilot-second-opinion/mcp/copilot-review-server/src/index.js"
+      ]
+    }
+  },
+  "lsp": false,
+  "provider": {
+    "github-copilot": {}
+  }
+}

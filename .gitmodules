@@ -1,0 +1,6 @@
+[submodule "skills/copilot-second-opinion-repo"]
+	path = skills/copilot-second-opinion-repo
+	url = https://github.com/Adamkadaban/copilot-second-opinion.git
+[submodule "skills/research-fetch"]
+	path = skills/research-fetch
+	url = https://github.com/Adamkadaban/research-fetch-skill.git
