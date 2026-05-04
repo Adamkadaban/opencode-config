@@ -1,4 +1,0 @@
----
-permission:
-  "*": allow
----
