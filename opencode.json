@@ -24,7 +24,7 @@
       "type": "local",
       "command": [
         "node",
-        "/home/adam/Desktop/copilot-second-opinion/mcp/copilot-review-server/src/index.js"
+        "~/Desktop/copilot-second-opinion/mcp/copilot-review-server/src/index.js"
       ]
     }
   },
