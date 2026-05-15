@@ -2,7 +2,8 @@
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
     "opencode-copilot-enhanced",
-    "opencode-content-filter@0.1.1"
+    "opencode-content-filter@0.1.1",
+    "opencode-keystone@0.3.5"
   ],
   "mcp": {
     "context7": {

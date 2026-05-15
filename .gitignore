@@ -3,3 +3,6 @@ package.json
 package-lock.json
 bun.lock
 plans/
+
+# managed by opencode-keystone plugin (symlink to per-machine cache)
+commands/keystone.md
