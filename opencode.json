@@ -29,6 +29,9 @@
     }
   },
   "lsp": false,
+  "tools": {
+    "github_merge_pull_request": false
+  },
   "provider": {
     "github-copilot": {}
   }
