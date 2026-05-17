@@ -6,3 +6,6 @@ plans/
 
 # managed by opencode-keystone plugin (symlink to per-machine cache)
 commands/keystone.md
+
+# managed by copilot-second-opinion plugin (symlink to per-machine cache)
+skills/copilot-second-opinion/

@@ -1,1 +1,0 @@
-/home/adam/.cache/opencode/packages/copilot-second-opinion@latest/node_modules/copilot-second-opinion/skill/copilot-second-opinion/SKILL.md
