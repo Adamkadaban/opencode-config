@@ -3,7 +3,8 @@
   "plugin": [
     "opencode-copilot-enhanced",
     "opencode-content-filter@0.1.1",
-    "opencode-keystone@0.3.7"
+    "opencode-keystone@0.3.12",
+    "copilot-second-opinion"
   ],
   "mcp": {
     "context7": {
@@ -19,20 +20,9 @@
       "headers": {
         "Authorization": "Bearer {file:~/.secrets/github-copilot-token}"
       }
-    },
-    "copilot-review": {
-      "type": "local",
-      "command": [
-        "node",
-        "/home/adam/Desktop/copilot-second-opinion/mcp/copilot-review-server/src/index.js"
-      ],
-      "timeout": 900000
     }
   },
   "lsp": false,
-  "tools": {
-    "github_merge_pull_request": false
-  },
   "provider": {
     "github-copilot": {}
   }
