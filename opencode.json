@@ -3,8 +3,8 @@
   "plugin": [
     "opencode-copilot-enhanced@0.1.8",
     "opencode-content-filter@0.1.1",
-    "opencode-keystone@0.3.12",
-    "copilot-second-opinion"
+    "opencode-keystone@0.3.14",
+    "copilot-second-opinion@0.4.2"
   ],
   "mcp": {
     "context7": {
