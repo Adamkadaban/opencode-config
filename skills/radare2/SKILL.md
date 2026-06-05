@@ -1,12 +1,20 @@
 ---
 name: radare2
-description: Reverse engineering with radare2 (r2) including disassembly, decompilation via r2ghidra and r2garlic, binary analysis, patching, debugging, and scripting. Use when analyzing binaries (ELF, PE, DEX, Mach-O, .sys drivers), decompiling functions, finding vulnerabilities, extracting strings, diffing binaries, or performing any reverse engineering task with r2. Triggers on radare2, r2, r2ghidra, r2garlic, pdg, disassemble, decompile binary, reverse engineer, binary analysis.
+description: Reverse engineering with radare2 (r2) including repo-local shared r2 projects, disassembly, decompilation via r2ghidra and r2garlic, binary analysis, patching, debugging, annotations, and scripting. Use when analyzing binaries (ELF, PE, DEX, Mach-O, .sys drivers), coordinating subagents on one r2 project, decompiling functions, finding vulnerabilities, extracting strings, diffing binaries, or performing any reverse engineering task with r2. Triggers on radare2, r2, r2ghidra, r2garlic, pdg, disassemble, decompile binary, reverse engineer, binary analysis.
 allowed-tools: Bash Read Glob Grep
 ---
 
 # Radare2 Reverse Engineering
 
 You are helping the user perform reverse engineering using radare2 (r2) and its ecosystem of tools and plugins.
+
+## Local Setup
+
+- Preferred r2: `/opt/radare2/binr/radare2/radare2`
+- Preferred rabin2: `/opt/radare2/binr/rabin2/rabin2`
+- Fallback r2/rabin2: `/usr/local/bin/r2`, `/usr/local/bin/rabin2`
+
+Prefer the `/opt/radare2` binaries when available so agents use the same local build.
 
 ## When to Use
 
@@ -18,6 +26,7 @@ You are helping the user perform reverse engineering using radare2 (r2) and its 
 - Triaging security mitigations (canary, NX, PIE, RELRO)
 - Diffing two versions of a binary
 - Scripting batch analysis with r2pipe or r2 command files
+- Maintaining lightweight persistent analysis state with r2 projects
 
 ## When NOT to Use
 
@@ -29,13 +38,29 @@ You are helping the user perform reverse engineering using radare2 (r2) and its 
 
 ## Essential Principles
 
+### 0. Use One Repo-Local Shared Workspace
+
+For any non-trivial RE task, create or reuse this workspace under the repository root/current working directory:
+
+```text
+.re/
+  radare2/projects/   # r2 dir.projects override
+  radare2/cache/      # r2 dir.cache override for cache-backed annotations when supported
+  ghidra/             # Ghidra projects when Ghidra is used
+  RE-NOTES.md         # cross-tool index of targets, findings, owners, and open questions
+```
+
+Every r2 command that creates or uses a project must set `dir.projects` to `$PWD/.re/radare2/projects`. Do not use the default `~/.local/share/radare2/projects`, because subagents will not reliably discover each other's work there.
+
+Use one r2 project name per target or case. Before running `aaa`, `pdg`, or saving a project, check whether `.re/radare2/projects` and `.re/RE-NOTES.md` already describe existing work.
+
 ### 1. Always Use `-q` for Scripted Commands
 
 r2 without `-q` enters interactive mode and hangs. Every automated invocation must use quiet mode.
 
 ```bash
-r2 -qc 'aaa; afl' /path/to/binary       # correct
-r2 -e scr.color=0 -qc 'afl' binary      # correct, no ANSI escapes
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; afl' /path/to/binary       # correct
+/opt/radare2/binr/radare2/radare2 -e scr.color=0 -qc 'afl' binary      # correct, no ANSI escapes
 ```
 
 ### 2. Analyze Before Decompiling
@@ -43,8 +68,8 @@ r2 -e scr.color=0 -qc 'afl' binary      # correct, no ANSI escapes
 Without analysis, `pdg`/`pdf`/`afl`/`axt` produce garbage or nothing. Always run `aaa` (or at minimum `aa`) first. This populates the function list, cross-references, and type info that the decompiler depends on.
 
 ```bash
-r2 -qc 'aaa; s main; pdg' binary    # correct
-r2 -qc 'pdg @ main' binary          # wrong -- no analysis done
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; s main; pdg' binary    # correct
+/opt/radare2/binr/radare2/radare2 -qc 'pdg @ main' binary          # wrong -- no analysis done
 ```
 
 ### 3. Prefer JSON for Structured Data
@@ -52,8 +77,8 @@ r2 -qc 'pdg @ main' binary          # wrong -- no analysis done
 Appending `j` to most commands returns JSON. This avoids parsing column-aligned text and reduces hallucination when processing output programmatically.
 
 ```bash
-r2 -qc 'aaa; aflj' binary           # function list as JSON
-r2 -qc 'iIj' binary                 # binary info as JSON
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; aflj' binary           # function list as JSON
+/opt/radare2/binr/radare2/radare2 -qc 'iIj' binary                 # binary info as JSON
 ```
 
 ### 4. Disable Colors When Capturing Output
@@ -61,7 +86,7 @@ r2 -qc 'iIj' binary                 # binary info as JSON
 r2 emits ANSI escape codes by default. Always disable when piping or capturing:
 
 ```bash
-r2 -e scr.color=0 -qc 'aaa; pdg @ main' binary
+/opt/radare2/binr/radare2/radare2 -e scr.color=0 -qc 'aaa; pdg @ main' binary
 ```
 
 ### 5. All PE Formats Are Equal
@@ -73,9 +98,52 @@ Windows `.sys` kernel drivers, `.dll` libraries, and `.exe` programs are all PE 
 The decompiler operates on the function at the current seek. Use `s` to seek or `@` for temporary seek:
 
 ```bash
-r2 -qc 'aaa; pdg @ main' binary             # temp-seek
-r2 -qc 'aaa; s sym.target; pdg' binary       # persistent seek
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; pdg @ main' binary             # temp-seek
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; s sym.target; pdg' binary       # persistent seek
 ```
+
+### 7. Use Projects for Iterative Work
+
+r2 projects persist analysis state across sessions, including flags, names, comments, types, analysis metadata, and patches. Use them when the investigation will last longer than one command, when you are annotating functions, or when you need to preserve recovered context.
+
+```bash
+mkdir -p .re/radare2/projects .re/radare2/cache
+/opt/radare2/binr/radare2/radare2 -q \
+  -e dir.projects="$PWD/.re/radare2/projects" \
+  -e dir.cache="$PWD/.re/radare2/cache" \
+  binary                                   # open target
+aaa; afn validate_key @ 0x401230; CCu checks license key @ 0x401230
+Ps case-name                                # save project
+/opt/radare2/binr/radare2/radare2 -q \
+  -e dir.projects="$PWD/.re/radare2/projects" \
+  -p case-name                              # reopen saved project
+```
+
+Use `Po` to open a project from inside r2, `Ps name` to save, and `P- name` only when deliberately deleting a project.
+
+### 8. Serialize Heavy r2 Work
+
+Do not spawn multiple subagents that all run `aaa`, `pdg`, `pd:Ga`, or `Ps` against the same target. r2 projects are saved as scripts/SDB data, and concurrent write sessions can overwrite or fork analysis state. Use one writer for project-changing work and let other agents consume saved project output, JSON exports, or `.re/RE-NOTES.md`.
+
+If parallel subagents are needed, partition by target binary or by read-only tasks. For the same target, assign function ranges in `.re/RE-NOTES.md` and have subagents return proposed names/comments/decompiler observations for the writer to apply.
+
+### 9. Store Notes Where Other Agents Will See Them
+
+Use project comments (`CCu`, `CCa`, `CCf`), function names (`afn`), types (`td`), and saved projects (`Ps`) for durable r2 state. Use `Pn` project notes for r2-specific notes when working interactively, but also keep `.re/RE-NOTES.md` as the cross-tool index because Ghidra users and non-r2 subagents can read it.
+
+The `ano` function annotation feature is cache-backed and useful for caching function notes or decompiler output. If using it, start r2 with `-e dir.cache="$PWD/.re/radare2/cache"`; still treat project comments and `.re/RE-NOTES.md` as the primary shared record.
+
+### 10. Prefer Targeted Reuse Over Reanalysis
+
+Before running `aaa`, `pdg`, `pd:Ga`, or bulk xref/decompiler sweeps on a large target, check `.re/RE-NOTES.md`, `.re/radare2/projects`, and any `report/artifacts/**/README.md` for prior exports. If useful artifacts exist, run targeted read-only queries against specific functions/addresses instead of redoing full analysis.
+
+For malware or unknown binaries, use offline byte-level extraction scripts for strings, resources, configs, and encodings. Record file offsets, virtual addresses, keys, and decode confidence; do not execute samples or contact network infrastructure from r2 scripts.
+
+### 11. Triage Overlays and Packed Blobs Carefully
+
+For high-entropy overlays or large appended data, record section end, overlay offset/size/hash, entropy, structural signature hits, known-key decrypt attempts, and xrefs or file-I/O references to that range. Treat raw `MZ` byte-pair hits in random data as noise unless a structurally valid PE header, coherent sections, and plausible references are present.
+
+Useful commands include `iS`, `iIj`, `it`, `/x 4d5a`, `/x 504b0304`, `/x 4d534346`, xrefs to file APIs, and targeted `px`/`p8` reads around candidate offsets. Prefer validating candidate embedded files structurally before spending decompiler time on them.
 
 ## Command Quick Reference
 
@@ -115,8 +183,8 @@ r2 -qc 'aaa; s sym.target; pdg' binary       # persistent seek
 |---------|-------------|
 | `pd N` / `pd -N` | Disassemble N instructions forward / backward |
 | `pdf` | Disassemble current function |
-| `pdc` | Built-in pseudo-C decompilation |
-| `pdg` | Ghidra decompilation (r2ghidra) |
+| `pdc` | Built-in pseudo-C decompilation, available without r2ghidra |
+| `pdg` | Ghidra decompilation through r2ghidra |
 | `pdg*` | Decompiled code as r2 comment commands |
 | `pdga` | Side-by-side disasm + decompile |
 | `pdgj` | Ghidra decompilation as JSON |
@@ -186,69 +254,119 @@ Thread-safe via recursive mutex. Timeout uses `fork()`+`select()`+`kill(9)`.
 
 ## Common Workflows
 
+### Shared Project Setup
+
+```bash
+mkdir -p .re/radare2/projects .re/radare2/cache
+/opt/radare2/binr/radare2/radare2 -q \
+  -e scr.color=0 \
+  -e dir.projects="$PWD/.re/radare2/projects" \
+  -e dir.cache="$PWD/.re/radare2/cache" \
+  -e prj.files=false \
+  -e prj.vc=true \
+  -qc 'aaa; Ps case-name' \
+  /absolute/path/to/binary
+```
+
+Record the project name, binary path/hash, architecture, analysis status, and assigned function ranges in `.re/RE-NOTES.md`. Reopen with the same `dir.projects` override; otherwise r2 will look in the home-directory project store.
+
+Use this minimal notes structure when creating `.re/RE-NOTES.md`:
+
+```markdown
+# Reverse Engineering Notes
+
+## Targets
+- `<binary>`: sha256 `<hash>`, Ghidra project `<case>`, r2 project `<case>`, status `<triage|analyzed|blocked>`
+
+## Work Queue
+- `<addr-or-function-range>`: owner `<agent/session>`, status `<todo|in-progress|done>`, notes `<short pointer>`
+
+## Findings
+- `<addr/function>`: `<tool>`, `<finding/evidence>`, `<open question or next step>`
+```
+
+Do not commit `.re/` artifacts unless the user explicitly asks; these project databases can be large and may include copied binaries or proprietary samples.
+
+When producing reusable outputs, add a short artifact index entry with target hash, r2 project name, command used, exported path, relevant function/address range, and whether the output is raw observation or inferred behavior.
+
 ### Quick Triage
 
 ```bash
-rabin2 -I binary                             # fast info, no r2 session
-r2 -qc 'iI~canary,nx,pic,relro' binary      # mitigations
-r2 -qc 'ii' binary                           # imports
-r2 -qc 'izz' binary                          # all strings
+/opt/radare2/binr/rabin2/rabin2 -I binary                             # fast info, no r2 session
+/opt/radare2/binr/radare2/radare2 -qc 'iI~canary,nx,pic,relro' binary # mitigations
+/opt/radare2/binr/radare2/radare2 -qc 'ii' binary                     # imports
+/opt/radare2/binr/radare2/radare2 -qc 'izz' binary                    # all strings
 ```
 
 ### Full Analysis + Decompilation
 
 ```bash
-r2 -qc 'aaa; afl' binary                    # list functions
-r2 -qc 'aaa; s main; pdg' binary            # decompile main
-r2 -qc 'aaa; pdg @ sym.target' binary       # decompile by name
-r2 -qc 'aaa; s 0x401000; af; pdg' binary    # analyze + decompile at addr
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; afl' binary                    # list functions
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; s main; pdg' binary            # decompile main
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; pdg @ sym.target' binary       # decompile by name
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; s 0x401000; af; pdg' binary    # analyze + decompile at addr
 ```
+
+Use `pdc` for quick built-in pseudocode when plugin availability is unknown. Use `pdg` when r2ghidra is installed and you want Ghidra-backed decompiler output from inside r2.
+
+### Persistent Annotation Session
+
+```bash
+/opt/radare2/binr/radare2/radare2 -q -e dir.projects="$PWD/.re/radare2/projects" binary
+aaa
+afn parse_header @ 0x401560
+CCu validates magic and length before allocation @ 0x401560
+"td struct packet { uint32_t magic; uint16_t len; }"
+Ps packet-review
+```
+
+Prefer this over one-shot commands once you start creating names, comments, types, or patches that should survive the session.
 
 ### Cross-References
 
 ```bash
-r2 -qc 'aaa; axt @ sym.dangerous_func' binary   # who calls this?
-r2 -qc 'aaa; axf @ main' binary                 # what does main call?
-r2 -qc 'aaa; axt @@ sym.imp.*' binary           # xrefs to all imports
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; axt @ sym.dangerous_func' binary   # who calls this?
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; axf @ main' binary                 # what does main call?
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; axt @@ sym.imp.*' binary           # xrefs to all imports
 ```
 
 ### Windows PE / Driver
 
 ```bash
-r2 -qc 'aaa; iI; ii; iE; afl' driver.sys
-r2 -qc 'aaa; s entry0; pdg' driver.sys
-r2 -qc 'aaa; ii~Nt\|Zw\|Ke' driver.sys          # kernel API imports
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; iI; ii; iE; afl' driver.sys
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; s entry0; pdg' driver.sys
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; ii~Nt\|Zw\|Ke' driver.sys          # kernel API imports
 ```
 
 ### Android DEX
 
 ```bash
-r2 -qc 'ic~com/example' classes.dex              # list app classes
-r2 -qc 's 0x1d0934; pd:Gc' classes.dex           # decompile class
-r2 -qc 'pd:Ga' classes.dex                       # decompile all
-r2 -qc 'izz~password\|api_key\|secret' classes.dex
+/opt/radare2/binr/radare2/radare2 -qc 'ic~com/example' classes.dex              # list app classes
+/opt/radare2/binr/radare2/radare2 -qc 's 0x1d0934; pd:Gc' classes.dex           # decompile class
+/opt/radare2/binr/radare2/radare2 -qc 'pd:Ga' classes.dex                       # decompile all
+/opt/radare2/binr/radare2/radare2 -qc 'izz~password\|api_key\|secret' classes.dex
 ```
 
 ### Patching
 
 ```bash
-r2 -wqc 'wx 9090 @ 0x401234' binary             # NOP 2 bytes
-r2 -wqc 'wa jmp 0x401300 @ 0x401234' binary      # redirect jump
+/opt/radare2/binr/radare2/radare2 -wqc 'wx 9090 @ 0x401234' binary             # NOP 2 bytes
+/opt/radare2/binr/radare2/radare2 -wqc 'wa jmp 0x401300 @ 0x401234' binary      # redirect jump
 ```
 
 ### ROP Gadgets
 
 ```bash
-r2 -qc '/R pop rdi;ret' binary
-r2 -qc '/R/ .*pop.*ret' binary                   # regex search
+/opt/radare2/binr/radare2/radare2 -qc '/R pop rdi;ret' binary
+/opt/radare2/binr/radare2/radare2 -qc '/R/ .*pop.*ret' binary                   # regex search
 ```
 
 ## Companion Tools
 
 | Tool | Usage |
 |------|-------|
-| `rabin2 -I file` | Binary info without r2 session |
-| `rabin2 -z file` / `rabin2 -i file` | Strings / imports |
+| `/opt/radare2/binr/rabin2/rabin2 -I file` | Binary info without r2 session |
+| `/opt/radare2/binr/rabin2/rabin2 -z file` / `/opt/radare2/binr/rabin2/rabin2 -i file` | Strings / imports |
 | `rasm2 -a x86 -b 64 'nop'` | Assemble instruction |
 | `rasm2 -a x86 -b 64 -d '90'` | Disassemble hex |
 | `rahash2 -a sha256 file` | Hash file |
@@ -261,10 +379,10 @@ r2 -qc '/R/ .*pop.*ret' binary                   # regex search
 
 ```bash
 # One-shot
-r2 -qc 'aaa; afl; s main; pdg' binary
+/opt/radare2/binr/radare2/radare2 -qc 'aaa; afl; s main; pdg' binary
 
 # Script file
-r2 -qi script.r2 binary
+/opt/radare2/binr/radare2/radare2 -qi script.r2 binary
 
 # r2pipe (Python)
 import r2pipe
@@ -274,9 +392,13 @@ functions = r2.cmdj("aflj")
 r2.quit()
 ```
 
+Use r2pipe for repeatable extraction and annotation, not just reads. Prefer JSON commands such as `aflj`, `agfj`, `pdfj`, `pdgj`, `axfj`, and `axtj` when building scripts.
+
 ## Success Criteria
 
 - [ ] Binary format and architecture correctly identified (`iI`)
+- [ ] Repo-local project directory `.re/radare2/projects` reused or created for non-trivial work
+- [ ] `.re/RE-NOTES.md` checked before starting and updated before handoff
 - [ ] Analysis completed without errors (`aaa` or appropriate level)
 - [ ] Target functions found and decompiled cleanly
 - [ ] Cross-references traced for functions of interest
