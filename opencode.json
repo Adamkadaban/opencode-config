@@ -30,7 +30,8 @@
       "cwd": "/home/adam/.local/share/binja-lattice-mcp",
       "environment": {
         "BNJLAT": "{file:~/.secrets/binja-lattice-key}"
-      }
+      },
+      "enabled": false
     },
     "crucible": {
       "type": "local",
@@ -38,7 +39,8 @@
         "/home/adam/.nvm/versions/node/v22.21.1/bin/crucible",
         "mcp",
         "--stdio"
-      ]
+      ],
+      "enabled": false
     }
   },
   "lsp": false,
