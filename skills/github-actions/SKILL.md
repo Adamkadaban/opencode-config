@@ -24,6 +24,14 @@ Use this skill when:
 - Integrating common actions (checkout, setup-*, cache, artifacts)
 - Troubleshooting workflow failures and debugging
 
+> [!IMPORTANT]
+> **Security is not optional.** A workflow file is privileged code with access to
+> your repository, secrets, and a write-capable `GITHUB_TOKEN`. **After writing or
+> modifying *any* file in `.github/workflows/`, you must audit it before
+> committing** — pin actions with `pinact`, scan with `zizmor`, and apply
+> least-privilege permissions. See the [Security](#security) section below and the
+> full [./references/security.md](./references/security.md) guide.
+
 ## Workflow File Structure
 
 Workflows are YAML files in `.github/workflows/`:
@@ -777,6 +785,21 @@ jobs:
 
 ### Security
 
+> **Mandatory after every workflow change.** Before committing any new or edited
+> workflow, run the audit pipeline and fix what it reports:
+>
+> ```bash
+> pinact run .github/workflows/   # pin every action to an immutable commit SHA
+> zizmor .github/workflows/       # static security audit (injection, perms, ...)
+> actionlint                      # syntax + expression validation
+> ```
+>
+> `zizmor` is the auditing tool of choice for finding template injection,
+> excessive permissions, unpinned actions, credential persistence, and dangerous
+> triggers. `pinact` rewrites mutable tags (`@v4`) to immutable SHAs while keeping
+> a readable version comment. Full guidance, install steps, CI gates, and the
+> `sha_pinning_required` caveat are in [./references/security.md](./references/security.md).
+
 ```yaml
 # Principle of least privilege
 permissions:
@@ -785,6 +808,16 @@ permissions:
 
 # Pin actions to SHA
 - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+# Harden checkout: don't leave the token on disk unless you must push
+- uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+  with:
+    persist-credentials: false
+
+# Never interpolate untrusted input into a shell — pass it via env instead
+- env:
+    TITLE: ${{ github.event.pull_request.title }}
+  run: echo "Building $TITLE"
 
 # Use environments for deployments
 jobs:
@@ -1238,6 +1271,7 @@ permissions:
 
 ### Reference Documentation
 
+- [./references/security.md](./references/security.md) - **Security hardening, `zizmor` auditing, `pinact` SHA-pinning (read after writing any workflow)**
 - [./references/syntax.md](./references/syntax.md) - Complete workflow syntax
 - [./references/events.md](./references/events.md) - All trigger events
 - [./references/contexts.md](./references/contexts.md) - Context objects and expressions
@@ -1249,3 +1283,6 @@ permissions:
 - Workflow syntax: <https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions>
 - Actions Marketplace: <https://github.com/marketplace?type=actions>
 - Starter workflows: <https://github.com/actions/starter-workflows>
+- Security hardening: <https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions>
+- zizmor (workflow security auditor): <https://docs.zizmor.sh>
+- pinact (pin actions to SHAs): <https://github.com/suzuki-shunsuke/pinact>
